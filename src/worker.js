@@ -26,20 +26,9 @@ export default {
       });
     }
 
-    // Serve static files
+    // Serve static files (index.html, styles.css, tetris.js, etc.)
     if (request.method === 'GET') {
-      const path = url.pathname === '/' ? '/index.html' : url.pathname;
-      
-      try {
-        const response = await env.ASSETS.fetch(request);
-        if (response && response.status === 200) {
-          return response;
-        }
-      } catch (error) {
-        console.error('Asset fetch error:', error);
-      }
-
-      return new Response('Not Found', { status: 404 });
+      return env.ASSETS.fetch(request);
     }
 
     return new Response('Not Found', { status: 404 });

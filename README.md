@@ -21,10 +21,18 @@ Visit `http://localhost:8787` to play.
 
 ## Deployment to Cloudflare
 
+Requires a free Cloudflare account.
+
 ```bash
-wrangler login
+npx wrangler login   # opens a browser to authenticate
 npm run deploy
 ```
+
+Wrangler will print your live URL, e.g. `https://block-quest.<your-subdomain>.workers.dev`.
+
+To use a custom domain instead, add it to your Cloudflare account first, then
+uncomment the `[[routes]]` block at the bottom of `wrangler.toml` with your
+domain.
 
 ## How to Play
 
