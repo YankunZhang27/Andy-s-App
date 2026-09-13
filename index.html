@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tetromancy</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Manrope:wght@500;700;800&display=swap">
+<style>
+  :root{
+    --ink-950:#0D0A1A;
+    --ink-900:#171029;
+    --ink-800:#241A3D;
+    --ink-700:#372A54;
+    --gold-300:#F4D68A;
+    --gold-400:#E8B84B;
+    --gold-700:#8A652A;
+    --parchment:#F1E9D8;
+    --mist-300:#BDB2D6;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; min-height:100vh; background:var(--ink-950); color:var(--parchment);
+    font-family:'Manrope', system-ui, sans-serif;
+    display:flex; flex-direction:column; align-items:center; gap:20px;
+    padding:32px 16px 48px;
+  }
+  h1{
+    font-family:'Cinzel', serif; font-weight:900; letter-spacing:3px;
+    color:var(--gold-400); margin:0; font-size:clamp(1.8rem, 5vw, 2.6rem);
+  }
+  .subtitle{color:var(--mist-300); font-size:14px; margin-top:-12px;}
+  .boards{display:flex; gap:32px; flex-wrap:wrap; justify-content:center;}
+  .board-panel{display:flex; flex-direction:column; align-items:center; gap:10px;}
+  .player-label{font-weight:800; font-size:14px; letter-spacing:0.5px;}
+  .player-label .keys{color:var(--mist-300); font-weight:500; font-size:12px;}
+  canvas{
+    border:2px solid var(--gold-700); border-radius:10px; background:var(--ink-950);
+    box-shadow:0 16px 40px -16px rgba(0,0,0,0.6);
+  }
+  .stats{font-size:13px; color:var(--mist-300); display:flex; gap:14px;}
+  .stats b{color:var(--gold-300);}
+  .next-badge{font-weight:800; font-size:14px;}
+  #message{min-height:1.6em; font-family:'Cinzel', serif; font-size:18px; color:var(--gold-300); text-align:center;}
+  button{
+    font-family:inherit; font-weight:800; font-size:14px; letter-spacing:0.3px;
+    background:var(--gold-400); color:#241205; border:none; border-radius:10px;
+    padding:12px 28px; cursor:pointer;
+  }
+  button:hover{background:var(--gold-300);}
+  .controls-hint{color:var(--mist-300); font-size:12.5px; text-align:center; max-width:480px;}
+</style>
+</head>
+<body>
+
+<h1>✦ TETROMANCY ✦</h1>
+<div class="subtitle">Two wizards, one keyboard. First to topple loses.</div>
+
+<div class="boards">
+  <div class="board-panel">
+    <div class="player-label">Player 1 <span class="keys">(A / D / S / W, Space)</span></div>
+    <canvas id="p1-canvas" width="240" height="480"></canvas>
+    <div class="stats">
+      <span>Score: <b id="p1-score">0</b></span>
+      <span>Lines: <b id="p1-lines">0</b></span>
+      <span>Level: <b id="p1-level">1</b></span>
+      <span>Next: <b id="p1-next" class="next-badge">-</b></span>
+    </div>
+  </div>
+  <div class="board-panel">
+    <div class="player-label">Player 2 <span class="keys">(Arrow Keys, Enter)</span></div>
+    <canvas id="p2-canvas" width="240" height="480"></canvas>
+    <div class="stats">
+      <span>Score: <b id="p2-score">0</b></span>
+      <span>Lines: <b id="p2-lines">0</b></span>
+      <span>Level: <b id="p2-level">1</b></span>
+      <span>Next: <b id="p2-next" class="next-badge">-</b></span>
+    </div>
+  </div>
+</div>
+
+<div id="message"></div>
+<button id="restart-btn">Play Again</button>
+<p class="controls-hint">Player 1: A/D move, S soft drop, W rotate, Space hard drop. Player 2: Arrow Left/Right move, Arrow Down soft drop, Arrow Up rotate, Enter hard drop.</p>
+
+<script>
+const COLS = 10;
+const ROWS = 20;
+
+const PIECES = {
+  I: { size: 4, color: '#5B9BD9', cells: [[0,0,0,0],[1,1,1,1],[0,0,0,0],[0,0,0,0]] },
+  O: { size: 2, color: '#E8B84B', cells: [[1,1],[1,1]] },
+  T: { size: 3, color: '#A578D9', cells: [[0,1,0],[1,1,1],[0,0,0]] },
+  S: { size: 3, color: '#6FBF8A', cells: [[0,1,1],[1,1,0],[0,0,0]] },
+  Z: { size: 3, color: '#D9645A', cells: [[1,1,0],[0,1,1],[0,0,0]] },
+  J: { size: 3, color: '#7E8FD9', cells: [[1,0,0],[1,1,1],[0,0,0]] },
+  L: { size: 3, color: '#E08A45', cells: [[0,0,1],[1,1,1],[0,0,0]] },
+};
+
+function rotateCW(matrix) {
+  const n = matrix.length;
+  const result = Array.from({ length: n }, () => Array(n).fill(0));
+  for (let r = 0; r < n; r++) {
+    for (let c = 0; c < n; c++) result[c][n - 1 - r] = matrix[r][c];
+  }
+  return result;
+}
+
+// Seven-bag randomizer: every piece appears once before any repeats.
+function makeBag() {
+  let bag = [];
+  return function next() {
+    if (bag.length === 0) {
+      bag = Object.keys(PIECES);
+      for (let i = bag.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [bag[i], bag[j]] = [bag[j], bag[i]];
+      }
+    }
+    return bag.pop();
+  };
+}
+
+class TetrisBoard {
+  constructor(canvas, els) {
+    this.ctx = canvas.getContext('2d');
+    this.block = canvas.width / COLS;
+    this.els = els;
+    this.grid = Array.from({ length: ROWS }, () => Array(COLS).fill(0));
+    this.drawBag = makeBag();
+    this.nextType = this.drawBag();
+    this.score = 0;
+    this.lines = 0;
+    this.level = 1;
+    this.alive = true;
+    this.dropTimer = 0;
+    this.spawn();
+  }
+
+  spawn() {
+    const type = this.nextType;
+    this.nextType = this.drawBag();
+    this.els.next.textContent = this.nextType;
+    this.els.next.style.color = PIECES[this.nextType].color;
+
+    const def = PIECES[type];
+    this.piece = { color: def.color, size: def.size, cells: def.cells.map((row) => [...row]) };
+    this.x = Math.floor((COLS - this.piece.size) / 2);
+    this.y = 0;
+    if (this.collides(this.x, this.y, this.piece.cells)) this.alive = false;
+  }
+
+  collides(x, y, cells) {
+    for (let r = 0; r < cells.length; r++) {
+      for (let c = 0; c < cells.length; c++) {
+        if (!cells[r][c]) continue;
+        const gx = x + c;
+        const gy = y + r;
+        if (gx < 0 || gx >= COLS || gy >= ROWS) return true;
+        if (gy >= 0 && this.grid[gy][gx]) return true;
+      }
+    }
+    return false;
+  }
+
+  move(dx, dy) {
+    if (!this.alive) return false;
+    if (this.collides(this.x + dx, this.y + dy, this.piece.cells)) return false;
+    this.x += dx;
+    this.y += dy;
+    return true;
+  }
+
+  rotate() {
+    if (!this.alive) return;
+    const rotated = rotateCW(this.piece.cells);
+    if (!this.collides(this.x, this.y, rotated)) this.piece.cells = rotated;
+  }
+
+  softDrop() {
+    if (this.move(0, 1)) this.score += 1;
+  }
+
+  hardDrop() {
+    if (!this.alive) return;
+    let dist = 0;
+    while (this.move(0, 1)) dist++;
+    this.score += dist * 2;
+    this.lock();
+  }
+
+  lock() {
+    for (let r = 0; r < this.piece.size; r++) {
+      for (let c = 0; c < this.piece.size; c++) {
+        if (!this.piece.cells[r][c]) continue;
+        const gy = this.y + r;
+        const gx = this.x + c;
+        if (gy >= 0 && gy < ROWS) this.grid[gy][gx] = this.piece.color;
+      }
+    }
+    const cleared = this.clearLines();
+    if (cleared > 0) {
+      this.lines += cleared;
+      this.score += [0, 100, 300, 500, 800][cleared] * this.level;
+      this.level = Math.floor(this.lines / 10) + 1;
+    }
+    this.spawn();
+  }
+
+  clearLines() {
+    let cleared = 0;
+    for (let row = ROWS - 1; row >= 0; row--) {
+      if (this.grid[row].every((cell) => cell !== 0)) {
+        this.grid.splice(row, 1);
+        this.grid.unshift(Array(COLS).fill(0));
+        cleared++;
+        row++;
+      }
+    }
+    return cleared;
+  }
+
+  tick(deltaTime) {
+    if (!this.alive) return;
+    this.dropTimer += deltaTime;
+    const interval = Math.max(120, 800 - (this.level - 1) * 60);
+    if (this.dropTimer > interval) {
+      this.dropTimer = 0;
+      if (!this.move(0, 1)) this.lock();
+    }
+  }
+
+  draw() {
+    const b = this.block;
+    const ctx = this.ctx;
+    ctx.fillStyle = '#0d0a1a';
+    ctx.fillRect(0, 0, COLS * b, ROWS * b);
+    for (let r = 0; r < ROWS; r++) {
+      for (let c = 0; c < COLS; c++) {
+        ctx.fillStyle = this.grid[r][c] || 'rgba(241,233,216,0.04)';
+        ctx.fillRect(c * b + 1, r * b + 1, b - 2, b - 2);
+      }
+    }
+    if (this.alive) {
+      ctx.fillStyle = this.piece.color;
+      for (let r = 0; r < this.piece.size; r++) {
+        for (let c = 0; c < this.piece.size; c++) {
+          if (!this.piece.cells[r][c]) continue;
+          const y = this.y + r;
+          if (y < 0) continue;
+          ctx.fillRect((this.x + c) * b + 1, y * b + 1, b - 2, b - 2);
+        }
+      }
+    }
+    this.els.score.textContent = this.score;
+    this.els.lines.textContent = this.lines;
+    this.els.level.textContent = this.level;
+  }
+}
+
+const messageEl = document.getElementById('message');
+let p1, p2, running, lastTime;
+
+function els(prefix) {
+  return {
+    score: document.getElementById(`${prefix}-score`),
+    lines: document.getElementById(`${prefix}-lines`),
+    level: document.getElementById(`${prefix}-level`),
+    next: document.getElementById(`${prefix}-next`),
+  };
+}
+
+function initGame() {
+  p1 = new TetrisBoard(document.getElementById('p1-canvas'), els('p1'));
+  p2 = new TetrisBoard(document.getElementById('p2-canvas'), els('p2'));
+  messageEl.textContent = '';
+  running = true;
+}
+
+function endGame() {
+  running = false;
+  if (!p1.alive && !p2.alive) messageEl.textContent = 'Both wizards topple at once — it’s a draw!';
+  else if (!p1.alive) messageEl.textContent = 'Player 2 wins! Player 1 ran out of spells.';
+  else messageEl.textContent = 'Player 1 wins! Player 2 ran out of spells.';
+}
+
+function loop(time) {
+  const dt = time - lastTime;
+  lastTime = time;
+  if (running) {
+    p1.tick(dt);
+    p2.tick(dt);
+    p1.draw();
+    p2.draw();
+    if (!p1.alive || !p2.alive) endGame();
+  }
+  requestAnimationFrame(loop);
+}
+
+document.getElementById('restart-btn').addEventListener('click', initGame);
+
+const KEYMAP = {
+  'a': ['p1', 'left'], 'A': ['p1', 'left'],
+  'd': ['p1', 'right'], 'D': ['p1', 'right'],
+  's': ['p1', 'down'], 'S': ['p1', 'down'],
+  'w': ['p1', 'rotate'], 'W': ['p1', 'rotate'],
+  ' ': ['p1', 'hard'],
+  'ArrowLeft': ['p2', 'left'],
+  'ArrowRight': ['p2', 'right'],
+  'ArrowDown': ['p2', 'down'],
+  'ArrowUp': ['p2', 'rotate'],
+  'Enter': ['p2', 'hard'],
+};
+
+document.addEventListener('keydown', (e) => {
+  const mapping = KEYMAP[e.key];
+  if (!mapping || !running) return;
+  e.preventDefault();
+  const [playerId, action] = mapping;
+  const board = playerId === 'p1' ? p1 : p2;
+  if (action === 'left') board.move(-1, 0);
+  else if (action === 'right') board.move(1, 0);
+  else if (action === 'down') board.softDrop();
+  else if (action === 'rotate') board.rotate();
+  else if (action === 'hard') board.hardDrop();
+});
+
+initGame();
+lastTime = performance.now();
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
