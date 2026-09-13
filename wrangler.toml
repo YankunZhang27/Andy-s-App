@@ -1,20 +1,16 @@
 name = "block-quest"
 main = "src/worker.js"
 compatibility_date = "2024-01-01"
-compatibility_flags = ["nodejs_compat"]
 
-[env.production]
-route = "blockquest.example.com/*"
+[[migrations]]
+tag = "v1"
+new_classes = ["GameRoom"]
 
 [[durable_objects.bindings]]
 name = "GAME_ROOM"
 class_name = "GameRoom"
+script_name = "block-quest"
 
-[durable_objects.migrations]
-new_migrations = ["001_create_game_room"]
-
-[build]
-command = "npm install"
-
-[build.upload]
-format = "service-worker"
+[env.production]
+route = "blockquest.example.com/*"
+vars = { ENVIRONMENT = "production" }
