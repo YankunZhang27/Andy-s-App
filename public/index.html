@@ -1,86 +1,184 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Block Quest - Multiplayer Tetris</title>
-  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Crimson+Text:wght@400;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="src/styles.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tetromancy</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;900&family=Spectral:ital,wght@0,400;0,500;1,400&family=Manrope:wght@500;600;700;800&display=swap">
+<link rel="stylesheet" href="src/styles.css">
 </head>
 <body>
-  <script src="src/tetris.js"></script>
-  <script src="src/multiplayer.js"></script>
-  <script src="src/app.js"></script>
-  <div id="landing-screen" class="screen active">
-    <div class="landing-container">
-      <div class="landing-header">
-        <div class="landing-label">⚔️ Epic Battles ⚔️</div>
-        <h1 class="landing-title">BLOCK QUEST</h1>
-        <div class="landing-subtitle">A Multiplayer Dungeon Puzzle</div>
+
+<div id="sparkfield"></div>
+
+<!-- ================= LANDING ================= -->
+<div id="landing-screen" class="screen active">
+  <div class="wrap">
+    <header>
+      <div class="logo">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+          <path d="M12 1.5 L14.3 9.1 L21.9 11.5 L14.3 13.9 L12 21.5 L9.7 13.9 L2.1 11.5 L9.7 9.1 Z" fill="#E8B84B"/>
+        </svg>
+        <span>TETROMANCY</span>
       </div>
-      <div class="landing-content">
-        <div class="game-preview">
-          <div class="preview-grid">⬜⬛⬜<br><br>⬛⬜⬛<br><br>⬜⬛⬜</div>
-        </div>
-        <p class="landing-description">
-          Summon your party. <span class="gold-text">Stack the blocks.</span> Crush your rivals in real-time multiplayer battles.
-        </p>
-        <div class="landing-actions">
-          <button id="create-game-btn" class="btn btn-primary">CREATE ARENA</button>
-          <button id="join-game-btn" class="btn btn-secondary">JOIN ARENA</button>
-        </div>
-        <div id="join-form" class="join-form hidden">
-          <input type="text" id="room-code" placeholder="Enter room code" maxlength="8">
-          <button id="submit-join-btn" class="btn btn-primary">ENTER</button>
-          <button id="cancel-join-btn" class="btn btn-secondary">CANCEL</button>
-        </div>
+      <div class="nav-right">
+        <a class="nav-link" href="#how">How it works</a>
+        <span class="players-badge">2–6 wizards · browser-based</span>
       </div>
-      <div class="landing-footer">
-        <div>Share a room code with your companions</div>
-        <div class="small">© 2024 Block Quest • Play with 2+ players</div>
-      </div>
-    </div>
-  </div>
-  <div id="game-screen" class="screen">
-    <div class="game-container">
-      <div class="game-header">
-        <div class="room-info">
-          <div class="room-code-label">ROOM CODE:</div>
-          <div id="room-code-display" class="room-code">-</div>
+    </header>
+
+    <section class="hero">
+      <div>
+        <div class="kicker">✦ A multiplayer spellcasting puzzle</div>
+        <h1>Stack your spells.<br>Outlast the coven.</h1>
+        <p class="lede">Drop enchanted blocks, clear rows of runes, and watch your rivals&rsquo; boards crumble in real time — all from one shared Coven Code.</p>
+
+        <div class="cta-row">
+          <button class="btn btn-primary" id="cast-btn">Cast a New Game →</button>
+          <button class="btn btn-secondary" id="join-btn">Join the Circle</button>
         </div>
-        <h2 class="game-title">BLOCK QUEST</h2>
-        <button id="leave-game-btn" class="btn-small">LEAVE</button>
-      </div>
-      <div class="game-board-wrapper">
-        <div class="player-section">
-          <div class="player-name">YOU</div>
-          <canvas id="player1-canvas" class="game-canvas" width="200" height="400"></canvas>
-          <div class="player-stats">
-            <div class="stat">Lines: <span id="player1-lines">0</span></div>
-            <div class="stat">Score: <span id="player1-score">0</span></div>
-          </div>
-        </div>
-        <div class="player-section">
-          <div class="player-name">OPPONENT</div>
-          <canvas id="player2-canvas" class="game-canvas" width="200" height="400"></canvas>
-          <div class="player-stats">
-            <div class="stat">Lines: <span id="player2-lines">0</span></div>
-            <div class="stat">Score: <span id="player2-score">0</span></div>
+        <p id="connect-status"></p>
+
+        <div class="code-strip">
+          <div class="code-label">Have a code? Enter your Coven Code</div>
+          <div class="code-row" id="code-row">
+            <input class="code-box" maxlength="1" id="code-0" autocomplete="off">
+            <input class="code-box" maxlength="1" id="code-1" autocomplete="off">
+            <input class="code-box" maxlength="1" id="code-2" autocomplete="off">
+            <input class="code-box" maxlength="1" id="code-3" autocomplete="off">
+            <input class="code-box" maxlength="1" id="code-4" autocomplete="off">
+            <input class="code-box" maxlength="1" id="code-5" autocomplete="off">
+            <button class="code-go" id="code-go-btn" aria-label="Join coven">→</button>
           </div>
         </div>
       </div>
-      <div class="game-controls">
-        <div class="controls-info">← → to move | SPACE to rotate | ↓ to drop</div>
-        <button id="pause-btn" class="btn btn-small">PAUSE</button>
+
+      <div>
+        <div class="wall-label">The scrying wall — live boards in your coven</div>
+        <div class="wall wall-static">
+          <div class="board-card you">
+            <div class="static-grid">
+              <div class="static-cell g" style="grid-column:1;grid-row:9"></div>
+              <div class="static-cell g" style="grid-column:2;grid-row:9"></div>
+              <div class="static-cell a" style="grid-column:2;grid-row:8"></div>
+              <div class="static-cell a" style="grid-column:3;grid-row:8"></div>
+              <div class="static-cell c" style="grid-column:3;grid-row:9"></div>
+              <div class="static-cell c" style="grid-column:4;grid-row:9"></div>
+            </div>
+            <div class="board-who"><span class="wiz-avatar you-avatar">🧙</span><div><div class="board-name">You</div><div class="board-score">— pts</div></div></div>
+          </div>
+          <div class="board-card">
+            <div class="static-grid">
+              <div class="static-cell e" style="grid-column:3;grid-row:9"></div>
+              <div class="static-cell e" style="grid-column:4;grid-row:9"></div>
+              <div class="static-cell m" style="grid-column:1;grid-row:8"></div>
+              <div class="static-cell m" style="grid-column:1;grid-row:9"></div>
+              <div class="static-cell g2" style="grid-column:5;grid-row:8"></div>
+              <div class="static-cell g2" style="grid-column:6;grid-row:9"></div>
+            </div>
+            <div class="board-who"><span class="wiz-avatar">🔮</span><div><div class="board-name">Elowen</div><div class="board-score">— pts</div></div></div>
+          </div>
+        </div>
+        <p class="wall-hint">Real boards appear here once your coven is summoned.</p>
       </div>
-    </div>
+    </section>
+
+    <section class="features" id="how">
+      <div class="feature">
+        <h3><span class="glyph">🜂</span>Falling blocks, ancient rules</h3>
+        <p>Seven enchanted tetrominoes drop from the ether. Rotate, slide, and stack them to complete a line and banish it in a flash of light.</p>
+      </div>
+      <div class="feature">
+        <h3><span class="glyph">🗝</span>One Coven Code, no sign-ups</h3>
+        <p>Whoever casts the game gets a six-character Coven Code. Share it, and every wizard who enters it lands in the same match instantly.</p>
+      </div>
+      <div class="feature">
+        <h3><span class="glyph">◈</span>Scry every board at once</h3>
+        <p>Every apprentice&rsquo;s board glows on your screen in real time. Clear two or more lines and send the overflow to your rivals as garbage.</p>
+      </div>
+    </section>
+
+    <footer>
+      <div><b>Tetromancy</b> is a fan-made, wizard-themed twist on falling-block puzzle games.</div>
+      <div>Runs entirely in the browser — built to deploy on Cloudflare.</div>
+    </footer>
   </div>
-  <div id="pause-screen" class="screen modal hidden">
-    <div class="modal-content">
-      <h2>GAME PAUSED</h2>
-      <button id="resume-btn" class="btn btn-primary">RESUME</button>
-      <button id="quit-btn" class="btn btn-secondary">QUIT TO LOBBY</button>
+</div>
+
+<!-- ================= GAME ================= -->
+<div id="game-screen" class="screen">
+  <header class="game-nav">
+    <div class="logo">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+        <path d="M12 1.5 L14.3 9.1 L21.9 11.5 L14.3 13.9 L12 21.5 L9.7 13.9 L2.1 11.5 L9.7 9.1 Z" fill="#E8B84B"/>
+      </svg>
+      <span>TETROMANCY</span>
     </div>
+    <div class="coven-info">
+      <span class="coven-label">Coven Code</span>
+      <span id="active-room-code" class="coven-code-display">——————</span>
+      <button id="copy-code-btn" class="btn-copy" title="Copy code">copy</button>
+    </div>
+    <button id="leave-btn" class="btn btn-secondary btn-sm">Leave Coven</button>
+  </header>
+
+  <main class="game-main">
+    <section class="own-board-panel">
+      <div class="side-panel">
+        <div class="mini-panel">
+          <div class="mini-label">Hold</div>
+          <canvas id="hold-canvas" width="88" height="88"></canvas>
+        </div>
+        <div class="stats-panel">
+          <div class="stat"><span>Score</span><b id="stat-score">0</b></div>
+          <div class="stat"><span>Lines</span><b id="stat-lines">0</b></div>
+          <div class="stat"><span>Level</span><b id="stat-level">1</b></div>
+        </div>
+      </div>
+
+      <div class="board-frame">
+        <canvas id="own-canvas" width="280" height="560"></canvas>
+        <div id="own-overlay" class="board-overlay hidden"></div>
+      </div>
+
+      <div class="side-panel">
+        <div class="mini-panel"><div class="mini-label">Next</div><canvas class="next-canvas" width="88" height="88"></canvas></div>
+        <div class="mini-panel"><div class="mini-label">Next</div><canvas class="next-canvas" width="88" height="88"></canvas></div>
+        <div class="mini-panel"><div class="mini-label">Next</div><canvas class="next-canvas" width="88" height="88"></canvas></div>
+      </div>
+    </section>
+
+    <section class="scrying-wall-panel">
+      <div class="wall-label">The scrying wall</div>
+      <div id="peer-wall" class="wall"></div>
+      <p id="wall-empty-note" class="wall-hint">Waiting for more wizards to join the coven&hellip;</p>
+    </section>
+  </main>
+
+  <footer class="game-controls-footer">
+    ← → move &nbsp;·&nbsp; ↓ soft drop &nbsp;·&nbsp; ↑ / X rotate &nbsp;·&nbsp; Z rotate back &nbsp;·&nbsp; Space hard drop &nbsp;·&nbsp; C hold &nbsp;·&nbsp; P pause
+  </footer>
+</div>
+
+<div id="pause-modal" class="modal hidden">
+  <div class="modal-content">
+    <h2>Game Paused</h2>
+    <button id="resume-btn" class="btn btn-primary">Resume</button>
+    <button id="quit-from-pause-btn" class="btn btn-secondary">Leave Coven</button>
   </div>
+</div>
+
+<div id="gameover-modal" class="modal hidden">
+  <div class="modal-content">
+    <h2 id="gameover-title">The Coven Has Spoken</h2>
+    <p id="gameover-message"></p>
+    <button id="quit-from-gameover-btn" class="btn btn-primary">Back to the Circle</button>
+  </div>
+</div>
+
+<script src="src/tetris.js"></script>
+<script src="src/network.js"></script>
+<script src="src/app.js"></script>
 </body>
 </html>

@@ -1,13 +1,13 @@
 {
-  "name": "block-quest",
-  "version": "0.1.0",
-  "description": "Multiplayer Tetris game on Cloudflare",
+  "name": "tetromancy",
+  "version": "0.2.0",
+  "description": "Tetromancy — a wizard-themed multiplayer Tetris game on Cloudflare",
   "type": "module",
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy"
   },
-  "keywords": ["tetris", "multiplayer", "cloudflare", "game"],
+  "keywords": ["tetris", "multiplayer", "cloudflare", "game", "wizard"],
   "license": "MIT",
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20240112.1",

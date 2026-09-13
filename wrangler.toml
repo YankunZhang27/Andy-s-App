@@ -1,4 +1,4 @@
-name = "tetrisgame"
+name = "tetromancy"
 main = "src/worker.js"
 compatibility_date = "2024-01-01"
 
@@ -15,7 +15,7 @@ name = "GAME_ROOM"
 class_name = "GameRoom"
 
 # Once you've deployed, your game is live at:
-#   https://block-quest.<your-subdomain>.workers.dev
+#   https://tetromancy.<your-subdomain>.workers.dev
 #
 # To use a custom domain instead, add it to your Cloudflare account first,
 # then uncomment and edit:

@@ -1,165 +1,324 @@
-const GRID_WIDTH = 10;
-const GRID_HEIGHT = 20;
-const BLOCK_SIZE = 20;
-const TETROMINOS = {
-  I: { shape: [[1, 1, 1, 1]], color: '#00ffff' },
-  O: { shape: [[1, 1], [1, 1]], color: '#ffff00' },
-  T: { shape: [[0, 1, 0], [1, 1, 1]], color: '#ff00ff' },
-  S: { shape: [[0, 1, 1], [1, 1, 0]], color: '#00ff00' },
-  Z: { shape: [[1, 1, 0], [0, 1, 1]], color: '#ff0000' },
-  J: { shape: [[1, 0, 0], [1, 1, 1]], color: '#0000ff' },
-  L: { shape: [[0, 0, 1], [1, 1, 1]], color: '#ff8800' }
+// Core Tetris engine: board state, seven-bag randomizer, movement, rotation
+// with basic wall kicks, hold, ghost piece, scoring, levels, and garbage-line
+// injection for multiplayer attacks. Rendering helpers for both the local
+// board and remote peers' boards live at the bottom of this file.
+
+const COLS = 10;
+const VISIBLE_ROWS = 20;
+const HIDDEN_ROWS = 2;
+const TOTAL_ROWS = VISIBLE_ROWS + HIDDEN_ROWS;
+const GARBAGE_COLOR = '#4A4358';
+
+const PIECES = {
+  I: { size: 4, color: '#5B9BD9', cells: [[0, 0, 0, 0], [1, 1, 1, 1], [0, 0, 0, 0], [0, 0, 0, 0]] },
+  O: { size: 2, color: '#E8B84B', cells: [[1, 1], [1, 1]] },
+  T: { size: 3, color: '#A578D9', cells: [[0, 1, 0], [1, 1, 1], [0, 0, 0]] },
+  S: { size: 3, color: '#6FBF8A', cells: [[0, 1, 1], [1, 1, 0], [0, 0, 0]] },
+  Z: { size: 3, color: '#D9645A', cells: [[1, 1, 0], [0, 1, 1], [0, 0, 0]] },
+  J: { size: 3, color: '#7E8FD9', cells: [[1, 0, 0], [1, 1, 1], [0, 0, 0]] },
+  L: { size: 3, color: '#E08A45', cells: [[0, 0, 1], [1, 1, 1], [0, 0, 0]] },
 };
-class TetrisGame {
-  constructor(canvasId) {
-    this.canvas = document.getElementById(canvasId);
-    this.ctx = this.canvas.getContext('2d');
-    this.grid = Array(GRID_HEIGHT).fill(null).map(() => Array(GRID_WIDTH).fill(0));
-    this.currentPiece = null;
-    this.currentX = 0;
-    this.currentY = 0;
+
+function rotateCW(matrix) {
+  const n = matrix.length;
+  const result = Array.from({ length: n }, () => Array(n).fill(0));
+  for (let r = 0; r < n; r++) {
+    for (let c = 0; c < n; c++) result[c][n - 1 - r] = matrix[r][c];
+  }
+  return result;
+}
+
+function makeBagGenerator() {
+  let bag = [];
+  return function next() {
+    if (bag.length === 0) {
+      bag = Object.keys(PIECES);
+      for (let i = bag.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [bag[i], bag[j]] = [bag[j], bag[i]];
+      }
+    }
+    return bag.pop();
+  };
+}
+
+class TetrisEngine {
+  constructor() {
+    this.grid = Array.from({ length: TOTAL_ROWS }, () => Array(COLS).fill(0));
+    this._drawBag = makeBagGenerator();
+    this.queue = [this._drawBag(), this._drawBag(), this._drawBag()];
+    this.hold = null;
+    this.canHold = true;
     this.score = 0;
     this.lines = 0;
-    this.gameOver = false;
-    this.isPaused = false;
     this.level = 1;
+    this.alive = true;
+    this.isPaused = false;
     this.dropCounter = 0;
-    this.dropInterval = 800;
-    this.spawnPiece();
-    this.draw();
+    this.lockTimer = 0;
+    this.lockDelay = 500;
+    this.groundedTime = 0;
+    this.maxGroundedTime = 3000;
+    this.clearedNow = 0;
+    this._spawn();
   }
-  spawnPiece() {
-    const pieces = Object.keys(TETROMINOS);
-    const type = pieces[Math.floor(Math.random() * pieces.length)];
-    const tetromino = TETROMINOS[type];
-    this.currentPiece = {
-      shape: tetromino.shape.map(row => [...row]),
-      color: tetromino.color,
-      type: type
+
+  get dropInterval() {
+    return Math.max(120, 1000 - (this.level - 1) * 75);
+  }
+
+  _pieceFromType(type) {
+    const def = PIECES[type];
+    return { type, color: def.color, size: def.size, cells: def.cells.map((row) => [...row]) };
+  }
+
+  _spawnPosition(size) {
+    return {
+      x: Math.floor((COLS - size) / 2),
+      y: HIDDEN_ROWS - (size === 4 ? 2 : 1),
     };
-    this.currentX = Math.floor((GRID_WIDTH - this.currentPiece.shape[0].length) / 2);
-    this.currentY = 0;
-    if (this.checkCollision()) this.gameOver = true;
   }
-  checkCollision(offsetX = 0, offsetY = 0, piece = this.currentPiece) {
-    const x = this.currentX + offsetX;
-    const y = this.currentY + offsetY;
-    for (let row = 0; row < piece.shape.length; row++) {
-      for (let col = 0; col < piece.shape[row].length; col++) {
-        if (piece.shape[row][col]) {
-          const gridX = x + col;
-          const gridY = y + row;
-          if (gridX < 0 || gridX >= GRID_WIDTH || gridY >= GRID_HEIGHT) return true;
-          if (gridY >= 0 && this.grid[gridY][gridX]) return true;
-        }
+
+  _spawn() {
+    const type = this.queue.shift();
+    this.queue.push(this._drawBag());
+    this.current = this._pieceFromType(type);
+    const pos = this._spawnPosition(this.current.size);
+    this.x = pos.x;
+    this.y = pos.y;
+    this.canHold = true;
+    this.groundedTime = 0;
+    this.lockTimer = 0;
+    this.dropCounter = 0;
+    if (this._collides(this.current, this.x, this.y)) this.alive = false;
+  }
+
+  _collides(piece, x, y) {
+    for (let r = 0; r < piece.size; r++) {
+      for (let c = 0; c < piece.size; c++) {
+        if (!piece.cells[r][c]) continue;
+        const gx = x + c;
+        const gy = y + r;
+        if (gx < 0 || gx >= COLS || gy >= TOTAL_ROWS) return true;
+        if (gy >= 0 && this.grid[gy][gx]) return true;
       }
     }
     return false;
   }
-  moveLeft() { if (!this.checkCollision(-1, 0)) this.currentX--; }
-  moveRight() { if (!this.checkCollision(1, 0)) this.currentX++; }
-  moveDown() {
-    if (!this.checkCollision(0, 1)) {
-      this.currentY++;
-      this.score += 1;
+
+  _refreshGrounded() {
+    if (this._collides(this.current, this.x, this.y + 1)) {
+      if (this.groundedTime < this.maxGroundedTime) this.lockTimer = 0;
     } else {
-      this.placePiece();
+      this.lockTimer = 0;
+      this.groundedTime = 0;
     }
   }
-  rotate() {
-    const original = this.currentPiece.shape;
-    this.currentPiece.shape = this.rotateMatrix(this.currentPiece.shape);
-    if (this.checkCollision()) this.currentPiece.shape = original;
+
+  _tryMove(dx, dy) {
+    if (!this.alive || this.isPaused) return false;
+    if (this._collides(this.current, this.x + dx, this.y + dy)) return false;
+    this.x += dx;
+    this.y += dy;
+    this._refreshGrounded();
+    return true;
   }
-  rotateMatrix(matrix) {
-    const n = matrix.length;
-    const rotated = Array(n).fill(null).map(() => Array(matrix[0].length).fill(0));
-    for (let i = 0; i < n; i++) {
-      for (let j = 0; j < matrix[0].length; j++) {
-        rotated[j][n - 1 - i] = matrix[i][j];
+
+  moveLeft() { this._tryMove(-1, 0); }
+  moveRight() { this._tryMove(1, 0); }
+
+  softDrop() {
+    if (this._tryMove(0, 1)) this.score += 1;
+  }
+
+  hardDrop() {
+    if (!this.alive || this.isPaused) return;
+    let dist = 0;
+    while (!this._collides(this.current, this.x, this.y + 1)) { this.y++; dist++; }
+    this.score += dist * 2;
+    this._lock();
+  }
+
+  // dir: 1 = clockwise, -1 = counter-clockwise
+  rotate(dir = 1) {
+    if (!this.alive || this.isPaused || this.current.type === 'O') return;
+    let rotated = this.current.cells;
+    const turns = dir === 1 ? 1 : 3;
+    for (let i = 0; i < turns; i++) rotated = rotateCW(rotated);
+    const kicks = [[0, 0], [-1, 0], [1, 0], [0, -1], [-2, 0], [2, 0]];
+    for (const [kx, ky] of kicks) {
+      if (!this._collides({ ...this.current, cells: rotated }, this.x + kx, this.y + ky)) {
+        this.current.cells = rotated;
+        this.x += kx;
+        this.y += ky;
+        this._refreshGrounded();
+        return;
       }
     }
-    return rotated;
   }
-  placePiece() {
-    for (let row = 0; row < this.currentPiece.shape.length; row++) {
-      for (let col = 0; col < this.currentPiece.shape[row].length; col++) {
-        if (this.currentPiece.shape[row][col]) {
-          const gridY = this.currentY + row;
-          const gridX = this.currentX + col;
-          if (gridY >= 0 && gridY < GRID_HEIGHT && gridX >= 0 && gridX < GRID_WIDTH) {
-            this.grid[gridY][gridX] = this.currentPiece.color;
-          }
-        }
+
+  holdPiece() {
+    if (!this.alive || this.isPaused || !this.canHold) return;
+    const currentType = this.current.type;
+    if (this.hold) {
+      this.current = this._pieceFromType(this.hold);
+      const pos = this._spawnPosition(this.current.size);
+      this.x = pos.x;
+      this.y = pos.y;
+    } else {
+      this._spawn();
+    }
+    this.hold = currentType;
+    this.canHold = false;
+  }
+
+  getGhostY() {
+    let gy = this.y;
+    while (!this._collides(this.current, this.x, gy + 1)) gy++;
+    return gy;
+  }
+
+  tick(deltaTime) {
+    if (!this.alive || this.isPaused) { this.clearedNow = 0; return; }
+    this.clearedNow = 0;
+    if (this._collides(this.current, this.x, this.y + 1)) {
+      this.lockTimer += deltaTime;
+      this.groundedTime += deltaTime;
+      if (this.lockTimer >= this.lockDelay || this.groundedTime >= this.maxGroundedTime) this._lock();
+    } else {
+      this.dropCounter += deltaTime;
+      if (this.dropCounter >= this.dropInterval) {
+        this.dropCounter = 0;
+        this.y++;
       }
     }
-    this.clearLines();
-    this.spawnPiece();
   }
-  clearLines() {
-    let linesCleared = 0;
-    for (let row = GRID_HEIGHT - 1; row >= 0; row--) {
-      if (this.grid[row].every(cell => cell !== 0)) {
+
+  _lock() {
+    for (let r = 0; r < this.current.size; r++) {
+      for (let c = 0; c < this.current.size; c++) {
+        if (!this.current.cells[r][c]) continue;
+        const gy = this.y + r;
+        const gx = this.x + c;
+        if (gy >= 0 && gy < TOTAL_ROWS) this.grid[gy][gx] = this.current.color;
+      }
+    }
+    const cleared = this._clearLines();
+    this.clearedNow = cleared;
+    if (cleared > 0) {
+      this.lines += cleared;
+      const table = [0, 100, 300, 500, 800];
+      this.score += (table[cleared] || 800) * this.level;
+      this.level = Math.floor(this.lines / 10) + 1;
+    }
+    this._spawn();
+  }
+
+  _clearLines() {
+    let cleared = 0;
+    for (let row = TOTAL_ROWS - 1; row >= 0; row--) {
+      if (this.grid[row].every((cell) => cell !== 0)) {
         this.grid.splice(row, 1);
-        this.grid.unshift(Array(GRID_WIDTH).fill(0));
-        linesCleared++;
+        this.grid.unshift(Array(COLS).fill(0));
+        cleared++;
         row++;
       }
     }
-    if (linesCleared > 0) {
-      this.lines += linesCleared;
-      this.score += linesCleared * 100 * linesCleared;
-      const newLevel = Math.floor(this.lines / 10) + 1;
-      if (newLevel !== this.level) {
-        this.level = newLevel;
-        this.dropInterval = Math.max(100, 800 - (this.level - 1) * 50);
-      }
+    return cleared;
+  }
+
+  // Rises the stack by `count` rows of garbage, each with one random gap.
+  addGarbage(count) {
+    if (!this.alive || count <= 0) return;
+    const gapCol = Math.floor(Math.random() * COLS);
+    for (let i = 0; i < count; i++) {
+      if (this.grid[0].some((cell) => cell)) { this.alive = false; return; }
+      this.grid.shift();
+      const row = Array(COLS).fill(GARBAGE_COLOR);
+      row[gapCol] = 0;
+      this.grid.push(row);
+    }
+    while (this._collides(this.current, this.x, this.y)) {
+      this.y--;
+      if (this.y < -TOTAL_ROWS) { this.alive = false; break; }
     }
   }
-  update(deltaTime) {
-    if (this.gameOver || this.isPaused) return;
-    this.dropCounter += deltaTime;
-    if (this.dropCounter > this.dropInterval) {
-      this.moveDown();
-      this.dropCounter = 0;
+
+  serialize() {
+    return {
+      grid: this.grid.slice(HIDDEN_ROWS),
+      piece: this.alive ? {
+        cells: this.current.cells,
+        color: this.current.color,
+        size: this.current.size,
+        x: this.x,
+        y: this.y - HIDDEN_ROWS,
+      } : null,
+      score: this.score,
+      lines: this.lines,
+      level: this.level,
+      alive: this.alive,
+      clearedNow: this.clearedNow,
+    };
+  }
+}
+
+// ---------- rendering helpers (canvas-based, no engine dependency for peers) ----------
+
+function drawCells(ctx, grid, blockSize) {
+  ctx.fillStyle = '#0d0a1a';
+  ctx.fillRect(0, 0, COLS * blockSize, VISIBLE_ROWS * blockSize);
+  for (let r = 0; r < VISIBLE_ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      const cell = grid[r] ? grid[r][c] : 0;
+      ctx.fillStyle = cell || 'rgba(241,233,216,0.035)';
+      ctx.fillRect(c * blockSize + 1, r * blockSize + 1, blockSize - 2, blockSize - 2);
     }
   }
-  draw() {
-    this.ctx.fillStyle = '#0a0a1a';
-    this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-    this.ctx.strokeStyle = '#333';
-    this.ctx.lineWidth = 0.5;
-    for (let i = 0; i <= GRID_HEIGHT; i++) {
-      this.ctx.beginPath();
-      this.ctx.moveTo(0, i * BLOCK_SIZE);
-      this.ctx.lineTo(GRID_WIDTH * BLOCK_SIZE, i * BLOCK_SIZE);
-      this.ctx.stroke();
+}
+
+function drawPieceCells(ctx, piece, blockSize, color, alpha = 1) {
+  if (!piece) return;
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.fillStyle = color || piece.color;
+  for (let r = 0; r < piece.size; r++) {
+    for (let c = 0; c < piece.size; c++) {
+      if (!piece.cells[r][c]) continue;
+      const y = piece.y + r;
+      if (y < 0) continue;
+      const x = piece.x + c;
+      ctx.fillRect(x * blockSize + 1, y * blockSize + 1, blockSize - 2, blockSize - 2);
     }
-    for (let i = 0; i <= GRID_WIDTH; i++) {
-      this.ctx.beginPath();
-      this.ctx.moveTo(i * BLOCK_SIZE, 0);
-      this.ctx.lineTo(i * BLOCK_SIZE, GRID_HEIGHT * BLOCK_SIZE);
-      this.ctx.stroke();
-    }
-    for (let row = 0; row < GRID_HEIGHT; row++) {
-      for (let col = 0; col < GRID_WIDTH; col++) {
-        if (this.grid[row][col]) {
-          this.ctx.fillStyle = this.grid[row][col];
-          this.ctx.fillRect(col * BLOCK_SIZE, row * BLOCK_SIZE, BLOCK_SIZE - 1, BLOCK_SIZE - 1);
-        }
-      }
-    }
-    if (this.currentPiece) {
-      this.ctx.fillStyle = this.currentPiece.color;
-      for (let row = 0; row < this.currentPiece.shape.length; row++) {
-        for (let col = 0; col < this.currentPiece.shape[row].length; col++) {
-          if (this.currentPiece.shape[row][col]) {
-            const x = (this.currentX + col) * BLOCK_SIZE;
-            const y = (this.currentY + row) * BLOCK_SIZE;
-            this.ctx.fillRect(x, y, BLOCK_SIZE - 1, BLOCK_SIZE - 1);
-          }
-        }
-      }
+  }
+  ctx.restore();
+}
+
+function renderOwnBoard(ctx, engine, blockSize) {
+  drawCells(ctx, engine.grid.slice(HIDDEN_ROWS), blockSize);
+  if (!engine.alive) return;
+  const ghostPiece = { ...engine.current, x: engine.x, y: engine.getGhostY() - HIDDEN_ROWS };
+  drawPieceCells(ctx, ghostPiece, blockSize, 'rgba(244,214,138,0.28)');
+  const livePiece = { ...engine.current, x: engine.x, y: engine.y - HIDDEN_ROWS };
+  drawPieceCells(ctx, livePiece, blockSize, engine.current.color);
+}
+
+function renderPeerBoard(ctx, state, blockSize) {
+  drawCells(ctx, state.grid, blockSize);
+  if (state.piece) drawPieceCells(ctx, state.piece, blockSize, state.piece.color);
+}
+
+function renderMiniPreview(ctx, type, blockSize) {
+  ctx.fillStyle = '#171029';
+  ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+  if (!type) return;
+  const def = PIECES[type];
+  const offset = (4 - def.size) / 2;
+  ctx.fillStyle = def.color;
+  for (let r = 0; r < def.size; r++) {
+    for (let c = 0; c < def.size; c++) {
+      if (!def.cells[r][c]) continue;
+      ctx.fillRect((c + offset) * blockSize + 1, (r + offset) * blockSize + 1, blockSize - 2, blockSize - 2);
     }
   }
 }
