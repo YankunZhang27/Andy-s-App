@@ -1,0 +1,41 @@
+:root {
+  color-scheme: dark;
+  --bg: #16130f;
+  --panel: #241f18;
+  --gold: #c9a24b;
+  --text: #ece4d3;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg);
+  color: var(--text);
+  font-family: Georgia, "Palatino Linotype", serif;
+}
+
+.placeholder {
+  text-align: center;
+  padding: 2.5rem 3rem;
+  background: var(--panel);
+  border: 1px solid var(--gold);
+  border-radius: 0.5rem;
+}
+
+.placeholder h1 {
+  margin: 0 0 0.5rem;
+  color: var(--gold);
+  letter-spacing: 0.05em;
+}
+
+.status {
+  opacity: 0.7;
+  font-style: italic;
+}

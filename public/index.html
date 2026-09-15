@@ -1,86 +1,16 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Block Quest - Multiplayer Tetris</title>
-  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Crimson+Text:wght@400;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="src/styles.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>D&amp;D Chess</title>
+  <link rel="stylesheet" href="/styles.css" />
 </head>
 <body>
-  <script src="src/tetris.js"></script>
-  <script src="src/multiplayer.js"></script>
-  <script src="src/app.js"></script>
-  <div id="landing-screen" class="screen active">
-    <div class="landing-container">
-      <div class="landing-header">
-        <div class="landing-label">⚔️ Epic Battles ⚔️</div>
-        <h1 class="landing-title">BLOCK QUEST</h1>
-        <div class="landing-subtitle">A Multiplayer Dungeon Puzzle</div>
-      </div>
-      <div class="landing-content">
-        <div class="game-preview">
-          <div class="preview-grid">⬜⬛⬜<br><br>⬛⬜⬛<br><br>⬜⬛⬜</div>
-        </div>
-        <p class="landing-description">
-          Summon your party. <span class="gold-text">Stack the blocks.</span> Crush your rivals in real-time multiplayer battles.
-        </p>
-        <div class="landing-actions">
-          <button id="create-game-btn" class="btn btn-primary">CREATE ARENA</button>
-          <button id="join-game-btn" class="btn btn-secondary">JOIN ARENA</button>
-        </div>
-        <div id="join-form" class="join-form hidden">
-          <input type="text" id="room-code" placeholder="Enter room code" maxlength="8">
-          <button id="submit-join-btn" class="btn btn-primary">ENTER</button>
-          <button id="cancel-join-btn" class="btn btn-secondary">CANCEL</button>
-        </div>
-      </div>
-      <div class="landing-footer">
-        <div>Share a room code with your companions</div>
-        <div class="small">© 2024 Block Quest • Play with 2+ players</div>
-      </div>
-    </div>
-  </div>
-  <div id="game-screen" class="screen">
-    <div class="game-container">
-      <div class="game-header">
-        <div class="room-info">
-          <div class="room-code-label">ROOM CODE:</div>
-          <div id="room-code-display" class="room-code">-</div>
-        </div>
-        <h2 class="game-title">BLOCK QUEST</h2>
-        <button id="leave-game-btn" class="btn-small">LEAVE</button>
-      </div>
-      <div class="game-board-wrapper">
-        <div class="player-section">
-          <div class="player-name">YOU</div>
-          <canvas id="player1-canvas" class="game-canvas" width="200" height="400"></canvas>
-          <div class="player-stats">
-            <div class="stat">Lines: <span id="player1-lines">0</span></div>
-            <div class="stat">Score: <span id="player1-score">0</span></div>
-          </div>
-        </div>
-        <div class="player-section">
-          <div class="player-name">OPPONENT</div>
-          <canvas id="player2-canvas" class="game-canvas" width="200" height="400"></canvas>
-          <div class="player-stats">
-            <div class="stat">Lines: <span id="player2-lines">0</span></div>
-            <div class="stat">Score: <span id="player2-score">0</span></div>
-          </div>
-        </div>
-      </div>
-      <div class="game-controls">
-        <div class="controls-info">← → to move | SPACE to rotate | ↓ to drop</div>
-        <button id="pause-btn" class="btn btn-small">PAUSE</button>
-      </div>
-    </div>
-  </div>
-  <div id="pause-screen" class="screen modal hidden">
-    <div class="modal-content">
-      <h2>GAME PAUSED</h2>
-      <button id="resume-btn" class="btn btn-primary">RESUME</button>
-      <button id="quit-btn" class="btn btn-secondary">QUIT TO LOBBY</button>
-    </div>
-  </div>
+  <main class="placeholder">
+    <h1>D&amp;D Chess</h1>
+    <p>Chess, reskinned with Dungeons &amp; Dragons classes.</p>
+    <p class="status">Under construction &mdash; Split-Screen mode is next.</p>
+  </main>
 </body>
 </html>

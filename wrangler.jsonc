@@ -1,0 +1,22 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  // The public name of this Worker. Also becomes part of the free
+  // "<name>.<your-subdomain>.workers.dev" URL Cloudflare gives you on deploy.
+  "name": "dnd-chess",
+  "main": "src/worker.js",
+  // Must stay pinned to the date this project was last checked against
+  // Cloudflare's runtime behavior. Update deliberately, not casually.
+  "compatibility_date": "2026-09-15",
+  "observability": {
+    "enabled": true
+  },
+  "assets": {
+    // Static files (HTML/CSS/JS/images) Cloudflare serves directly at the edge.
+    "directory": "./public",
+    // Lets src/worker.js reach these files itself via env.ASSETS.fetch(request).
+    "binding": "ASSETS",
+    // Unmatched paths fall back to index.html so client-side routing (picking
+    // a game mode, joining a room) works without a matching static file.
+    "not_found_handling": "single-page-application"
+  }
+}

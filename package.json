@@ -1,16 +1,15 @@
 {
-  "name": "block-quest",
+  "name": "dnd-chess",
   "version": "0.1.0",
-  "description": "Multiplayer Tetris game on Cloudflare",
+  "description": "Browser-based chess with Dungeons & Dragons class-themed pieces, on Cloudflare Workers",
   "type": "module",
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy"
   },
-  "keywords": ["tetris", "multiplayer", "cloudflare", "game"],
+  "keywords": ["chess", "dnd", "cloudflare", "workers", "game"],
   "license": "MIT",
   "devDependencies": {
-    "@cloudflare/workers-types": "^4.20240112.1",
-    "wrangler": "^3.26.0"
+    "wrangler": "^4.0.0"
   }
 }

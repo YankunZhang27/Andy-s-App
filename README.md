@@ -1,52 +1,73 @@
-# Block Quest - Multiplayer Tetris
+# D&D Chess
 
-A real-time multiplayer Tetris game built with vanilla JavaScript and Cloudflare Workers, inspired by D&D aesthetics.
+A browser-based chess game where every piece is reskinned as a Dungeons &
+Dragons character class. Three ways to play:
 
-## Features
+1. **Split-Screen (hot-seat)** — two people share one screen and take turns.
+2. **VS Computer** — you play against a bot that runs entirely in your browser.
+3. **Online** — two players on different devices join the same game with a
+   short room code and see each other's moves live.
 
-- ⚔️ **Epic Fantasy Design** - Gold and red aesthetic with dramatic typography
-- 🎮 **Local Multiplayer** - Two players on the same screen
-- 📱 **Responsive Design** - Works on desktop and mobile
-- ☁️ **Cloudflare Deployment Ready** - Built for Cloudflare Workers + Durable Objects
-- 🎯 **Full Tetris Mechanics** - Line clearing, scoring, levels, hard drops
+Standard chess rules apply underneath the theme — nothing about how the
+pieces move is changed, only what they're called and how they look. See
+[`ProductSpec.md`](./ProductSpec.md) for the full design, and
+[`FEATUREROADMAP_workplan.md`](./FEATUREROADMAP_workplan.md) for the build
+plan and current progress.
 
-## Quick Start
+## Who built this
+
+Built by Yankun Zhang (yankunzhang@brandeis.edu) with Claude Code as the
+coding assistant.
+
+## What "Cloudflare Workers" means here
+
+This app doesn't run on a traditional always-on server. It deploys to
+**Cloudflare Workers**, a platform that runs your code on-demand, close to
+whoever's using it, instead of on one server you have to keep running
+yourself. Two Workers features this project relies on:
+
+- **Workers Assets** — Cloudflare hosts your static files (HTML/CSS/JS)
+  directly and serves them at the edge; no separate file host needed.
+- **Durable Objects** — for the Online mode, each game room gets its own
+  small, stateful piece of server-side code (a "Durable Object") that
+  remembers the board position and relays moves between the two players
+  over a live connection (a WebSocket). "Stateful" just means it can
+  remember things between messages, unlike a normal Worker request which
+  forgets everything as soon as it responds.
+
+This project runs entirely on Cloudflare's **Workers Free plan** — no paid
+tier or credit card is required to deploy it.
+
+## How to run it locally
+
+Requirements: [Node.js](https://nodejs.org) (for `npm`) and a free
+[Cloudflare account](https://dash.cloudflare.com/sign-up).
 
 ```bash
 npm install
 npm run dev
 ```
 
-Visit `http://localhost:8787` to play.
+This starts a local development server (via `wrangler dev`) that simulates
+Cloudflare Workers, Assets, and Durable Objects on your machine. It prints a
+local URL (usually `http://localhost:8787`) — open that in your browser.
 
-## Deployment to Cloudflare
-
-Requires a free Cloudflare account.
+## How to deploy it
 
 ```bash
-npx wrangler login   # opens a browser to authenticate
+npx wrangler login   # one-time: connects your Cloudflare account
 npm run deploy
 ```
 
-Wrangler will print your live URL, e.g. `https://block-quest.<your-subdomain>.workers.dev`.
+`wrangler` is Cloudflare's command-line deployment tool. `npm run deploy`
+uploads the app and prints a live URL that looks like
+`https://<app-name>.<your-subdomain>.workers.dev` — that's the real,
+public address anyone can open to play. No further configuration is
+needed for the Free plan.
 
-To use a custom domain instead, add it to your Cloudflare account first, then
-uncomment the `[[routes]]` block at the bottom of `wrangler.toml` with your
-domain.
+## Project status
 
-## How to Play
-
-- **CREATE ARENA** - Start a new game
-- **JOIN ARENA** - Join with a room code
-- **Controls**: Arrow keys to move, SPACE to rotate, down arrow to drop faster
-
-## Tech Stack
-
-- Vanilla JavaScript
-- HTML5 Canvas
-- Cloudflare Workers + Durable Objects
-- CSS3
-
-## License
-
-MIT
+This project is being built incrementally, in the order laid out in
+[`FEATUREROADMAP_workplan.md`](./FEATUREROADMAP_workplan.md): hot-seat mode
+is deployed and playable first, then the computer opponent, then online
+play. Check that file for exactly what's done and what's next.
