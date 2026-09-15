@@ -1,0 +1,15 @@
+{
+  "name": "dnd-chess",
+  "version": "0.1.0",
+  "description": "Browser-based chess with Dungeons & Dragons class-themed pieces, on Cloudflare Workers",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy"
+  },
+  "keywords": ["chess", "dnd", "cloudflare", "workers", "game"],
+  "license": "MIT",
+  "devDependencies": {
+    "wrangler": "^4.0.0"
+  }
+}
