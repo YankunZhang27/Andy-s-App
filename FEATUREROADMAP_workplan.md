@@ -34,7 +34,7 @@ Goal: prove the Cloudflare Workers deployment pipeline end-to-end with a
 placeholder page, *before* any game logic exists, so every later phase is
 deploying onto ground already known to work.
 
-- [ ] **0.1 — Scaffold the Workers project and deploy a placeholder page**
+- [x] **0.1 — Scaffold the Workers project and deploy a placeholder page**
   - Dependencies: none
   - Files: `package.json`, `wrangler.jsonc`, `public/index.html`,
     `src/worker.js`, `.gitignore` (review/update)
@@ -45,6 +45,11 @@ deploying onto ground already known to work.
     `npm run deploy` succeeds and prints a live `workers.dev` URL that,
     when visited, shows a simple "D&D Chess — under construction" page
     served as a static asset.
+  - Status: code, config, and local verification (`wrangler dev` serving
+    the page correctly, `wrangler deploy --dry-run` validating the config)
+    are done. The actual `npm run deploy` to get a live URL needs a
+    Cloudflare account login (`npx wrangler login`), which this build
+    environment doesn't have — see the note below.
 
 ---
 
